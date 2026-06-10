@@ -11,6 +11,8 @@ export interface ElkChild {
   y?: number;
   children?: ElkChild[];
   parentId?: string;
+  /** Per-node ELK options (e.g. elk.partitioning.partition for Flow mode). */
+  layoutOptions?: Record<string, string>;
 }
 
 export interface ElkEdge {

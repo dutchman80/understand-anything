@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -6,6 +6,7 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  useReactFlow,
 } from "@xyflow/react";
 import type { Edge, Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -13,7 +14,16 @@ import "@xyflow/react/dist/style.css";
 import CustomNode from "./CustomNode";
 import type { CustomNodeData } from "./CustomNode";
 import { useDashboardStore } from "../store";
+import { useI18n } from "../contexts/I18nContext";
 import { applyForceLayout, NODE_WIDTH, NODE_HEIGHT } from "../utils/layout";
+import { applyElkLayout } from "../utils/elk-layout";
+import {
+  deriveTourRanks,
+  buildFlowElkInput,
+  loadLayoutMode,
+  saveLayoutMode,
+} from "../utils/knowledgeFlowLayout";
+import type { KnowledgeLayoutMode } from "../utils/knowledgeFlowLayout";
 import type { KnowledgeGraph } from "@understand-anything/core/types";
 
 const nodeTypes = {
@@ -44,6 +54,25 @@ function getNodeDimensions(
   };
 }
 
+/** Edge counts + node dimensions, shared by the force and flow layouts. */
+function computeDimsAndCounts(graph: KnowledgeGraph): {
+  edgeCounts: Map<string, number>;
+  dims: Map<string, { width: number; height: number }>;
+} {
+  const edgeCounts = new Map<string, number>();
+  for (const edge of graph.edges) {
+    edgeCounts.set(edge.source, (edgeCounts.get(edge.source) ?? 0) + 1);
+    edgeCounts.set(edge.target, (edgeCounts.get(edge.target) ?? 0) + 1);
+  }
+
+  const dims = new Map<string, { width: number; height: number }>();
+  for (const node of graph.nodes) {
+    dims.set(node.id, getNodeDimensions(edgeCounts.get(node.id) ?? 0));
+  }
+
+  return { edgeCounts, dims };
+}
+
 /**
  * Compute the stable layout (positions) from graph topology.
  * This only re-runs when the graph data or filters change, NOT on selection/search.
@@ -51,11 +80,7 @@ function getNodeDimensions(
 function computeLayout(
   graph: KnowledgeGraph,
 ): { positionMap: Map<string, { x: number; y: number }>; edgeCounts: Map<string, number>; communityMap: Map<string, number> } {
-  const edgeCounts = new Map<string, number>();
-  for (const edge of graph.edges) {
-    edgeCounts.set(edge.source, (edgeCounts.get(edge.source) ?? 0) + 1);
-    edgeCounts.set(edge.target, (edgeCounts.get(edge.target) ?? 0) + 1);
-  }
+  const { edgeCounts, dims } = computeDimsAndCounts(graph);
 
   const communityMap = new Map<string, number>();
   graph.layers.forEach((layer, i) => {
@@ -63,11 +88,6 @@ function computeLayout(
       communityMap.set(nodeId, i);
     }
   });
-
-  const dims = new Map<string, { width: number; height: number }>();
-  for (const node of graph.nodes) {
-    dims.set(node.id, getNodeDimensions(edgeCounts.get(node.id) ?? 0));
-  }
 
   // Build temporary nodes/edges for layout computation only
   const tmpNodes: Node[] = graph.nodes.map((node) => ({
@@ -101,6 +121,22 @@ function KnowledgeGraphViewInner() {
   const searchResultsRaw = useDashboardStore((s) => s.searchResults);
   const tourHighlightedNodeIds = useDashboardStore((s) => s.tourHighlightedNodeIds);
   const nodeTypeFilters = useDashboardStore((s) => s.nodeTypeFilters);
+  const { fitView } = useReactFlow();
+  const { t } = useI18n();
+
+  // Layout mode (Force / Flow), persisted per graph in localStorage.
+  const projectName = graph?.project.name ?? "";
+  const [layoutMode, setLayoutModeState] = useState<KnowledgeLayoutMode>("force");
+  useEffect(() => {
+    if (projectName) setLayoutModeState(loadLayoutMode(projectName));
+  }, [projectName]);
+  const setLayoutMode = useCallback(
+    (mode: KnowledgeLayoutMode) => {
+      setLayoutModeState(mode);
+      if (projectName) saveLayoutMode(projectName, mode);
+    },
+    [projectName],
+  );
 
   const onNodeClick = useCallback(
     (nodeId: string) => selectNode(nodeId),
@@ -141,6 +177,49 @@ function KnowledgeGraphViewInner() {
     if (!filteredGraph) return { positionMap: new Map(), edgeCounts: new Map() };
     return computeLayout(filteredGraph);
   }, [filteredGraph]);
+
+  // Flow mode: async ELK layered layout, left→right, ranked by tour order.
+  const [flowPositions, setFlowPositions] = useState<Map<string, { x: number; y: number }> | null>(null);
+  useEffect(() => {
+    if (!filteredGraph || layoutMode !== "flow") {
+      setFlowPositions(null);
+      return;
+    }
+    let cancelled = false;
+    const { dims } = computeDimsAndCounts(filteredGraph);
+    const ranks = deriveTourRanks(filteredGraph);
+    applyElkLayout(buildFlowElkInput(filteredGraph, dims, ranks))
+      .then(({ positioned, issues }) => {
+        if (cancelled) return;
+        if (issues.length > 0) {
+          useDashboardStore.getState().appendLayoutIssues(issues);
+        }
+        const map = new Map<string, { x: number; y: number }>();
+        for (const child of positioned.children ?? []) {
+          map.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
+        }
+        setFlowPositions(map);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[knowledge flow] layout failed:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filteredGraph, layoutMode]);
+
+  // Force positions render until the async flow layout is ready.
+  const activePositions =
+    layoutMode === "flow" && flowPositions ? flowPositions : positionMap;
+
+  // Re-fit the viewport when the layout swaps.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      fitView({ padding: 0.15, duration: 400 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activePositions, fitView]);
 
   // Build visual nodes/edges — recomputes on selection/search/tour WITHOUT re-layout
   const { nodes, edges } = useMemo(() => {
@@ -190,7 +269,7 @@ function KnowledgeGraphViewInner() {
       return {
         id: node.id,
         type: "custom" as const,
-        position: positionMap.get(node.id) ?? { x: 0, y: 0 },
+        position: activePositions.get(node.id) ?? { x: 0, y: 0 },
         data,
       };
     });
@@ -233,7 +312,7 @@ function KnowledgeGraphViewInner() {
     });
 
     return { nodes: rfNodes, edges: rfEdges };
-  }, [filteredGraph, selectedNodeId, focusNodeId, searchResults, tourSet, onNodeClick, positionMap, edgeCounts]);
+  }, [filteredGraph, selectedNodeId, focusNodeId, searchResults, tourSet, onNodeClick, activePositions, edgeCounts]);
 
   if (!graph) {
     return (
@@ -245,6 +324,28 @@ function KnowledgeGraphViewInner() {
 
   return (
     <div className="h-full w-full relative">
+      {/* Layout toggle: force-directed vs left-to-right flow (tour order) */}
+      <div
+        className="absolute top-3 left-3 z-10 flex items-center bg-elevated rounded-lg p-0.5 border border-border-subtle"
+        data-testid="knowledge-layout-toggle"
+      >
+        {(["force", "flow"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setLayoutMode(mode)}
+            data-testid={`layout-${mode}`}
+            title={mode === "force" ? t.knowledgeLayout.forceTitle : t.knowledgeLayout.flowTitle}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              layoutMode === mode
+                ? "bg-accent/20 text-accent"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            {mode === "force" ? t.knowledgeLayout.force : t.knowledgeLayout.flow}
+          </button>
+        ))}
+      </div>
       <ReactFlow
         nodes={nodes}
         edges={edges}

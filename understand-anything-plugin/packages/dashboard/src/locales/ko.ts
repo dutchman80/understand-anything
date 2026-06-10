@@ -78,6 +78,12 @@ export const ko = {
     deepDive: "심층",
     deepDiveDesc: "코드 중심 채팅",
   },
+  knowledgeLayout: {
+    force: "포스",
+    flow: "플로우",
+    forceTitle: "포스 기반 레이아웃",
+    flowTitle: "왼쪽에서 오른쪽 플로우 레이아웃 (투어 순서)",
+  },
   sidebar: {
     info: "정보",
     files: "파일",

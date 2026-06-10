@@ -78,6 +78,12 @@ export const ru = {
     deepDive: "Погружение",
     deepDiveDesc: "Фокус на коде с чатом",
   },
+  knowledgeLayout: {
+    force: "Силовая",
+    flow: "Поток",
+    forceTitle: "Силовая раскладка",
+    flowTitle: "Поток слева направо (по порядку тура)",
+  },
   sidebar: {
     info: "Информация",
     files: "Файлы",

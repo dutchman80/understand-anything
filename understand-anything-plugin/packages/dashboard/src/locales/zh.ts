@@ -78,6 +78,12 @@ export const zh = {
     deepDive: "深入",
     deepDiveDesc: "代码聚焦与对话",
   },
+  knowledgeLayout: {
+    force: "力导向",
+    flow: "流程",
+    forceTitle: "力导向布局",
+    flowTitle: "从左到右的流程布局（按导览顺序）",
+  },
   sidebar: {
     info: "信息",
     files: "文件",
