@@ -14,6 +14,8 @@ import CustomNode from "./CustomNode";
 import type { CustomNodeData } from "./CustomNode";
 import { useDashboardStore } from "../store";
 import { applyForceLayout, NODE_WIDTH, NODE_HEIGHT } from "../utils/layout";
+import { parseCostTags } from "../utils/costTags";
+import type { CostTagInfo } from "../utils/costTags";
 import type { KnowledgeGraph } from "@understand-anything/core/types";
 
 const nodeTypes = {
@@ -45,11 +47,22 @@ function getNodeDimensions(
 }
 
 /**
+ * Heatmap size multiplier for a node's cost relative to the graph max.
+ * sqrt spreads mid-range costs apart instead of letting one outlier flatten
+ * everything else; must match the CSS scale applied in CustomNode.
+ */
+export function getCostScale(costPerYear: number | undefined, maxCost: number): number {
+  if (!costPerYear || maxCost <= 0) return 1;
+  return 1 + Math.sqrt(costPerYear / maxCost) * 0.5;
+}
+
+/**
  * Compute the stable layout (positions) from graph topology.
  * This only re-runs when the graph data or filters change, NOT on selection/search.
  */
 function computeLayout(
   graph: KnowledgeGraph,
+  costScales?: Map<string, number>,
 ): { positionMap: Map<string, { x: number; y: number }>; edgeCounts: Map<string, number>; communityMap: Map<string, number> } {
   const edgeCounts = new Map<string, number>();
   for (const edge of graph.edges) {
@@ -66,7 +79,14 @@ function computeLayout(
 
   const dims = new Map<string, { width: number; height: number }>();
   for (const node of graph.nodes) {
-    dims.set(node.id, getNodeDimensions(edgeCounts.get(node.id) ?? 0));
+    const base = getNodeDimensions(edgeCounts.get(node.id) ?? 0);
+    // Heatmap mode reserves a bigger layout box for high-cost nodes so the
+    // CSS-scaled node in CustomNode doesn't overlap its neighbors.
+    const costScale = costScales?.get(node.id) ?? 1;
+    dims.set(node.id, {
+      width: Math.round(base.width * costScale),
+      height: Math.round(base.height * costScale),
+    });
   }
 
   // Build temporary nodes/edges for layout computation only
@@ -101,6 +121,7 @@ function KnowledgeGraphViewInner() {
   const searchResultsRaw = useDashboardStore((s) => s.searchResults);
   const tourHighlightedNodeIds = useDashboardStore((s) => s.tourHighlightedNodeIds);
   const nodeTypeFilters = useDashboardStore((s) => s.nodeTypeFilters);
+  const costHeatmap = useDashboardStore((s) => s.costHeatmap);
 
   const onNodeClick = useCallback(
     (nodeId: string) => selectNode(nodeId),
@@ -136,11 +157,30 @@ function KnowledgeGraphViewInner() {
     return { ...graph, nodes: filteredNodes, edges: filteredEdges };
   }, [graph, nodeTypeFilters]);
 
-  // Compute layout ONCE per graph/filter change — stable positions
+  // Cost overlay data — parsed once per graph/filter change
+  const { costMap, maxCost } = useMemo(() => {
+    const costMap = new Map<string, CostTagInfo>();
+    let maxCost = 0;
+    for (const node of filteredGraph?.nodes ?? []) {
+      const info = parseCostTags(node.tags);
+      costMap.set(node.id, info);
+      if (info.costPerYear && info.costPerYear > maxCost) maxCost = info.costPerYear;
+    }
+    return { costMap, maxCost };
+  }, [filteredGraph]);
+
+  // Compute layout ONCE per graph/filter/heatmap change — stable positions
   const { positionMap, edgeCounts } = useMemo(() => {
     if (!filteredGraph) return { positionMap: new Map(), edgeCounts: new Map() };
-    return computeLayout(filteredGraph);
-  }, [filteredGraph]);
+    let costScales: Map<string, number> | undefined;
+    if (costHeatmap && maxCost > 0) {
+      costScales = new Map<string, number>();
+      for (const [id, info] of costMap) {
+        costScales.set(id, getCostScale(info.costPerYear, maxCost));
+      }
+    }
+    return computeLayout(filteredGraph, costScales);
+  }, [filteredGraph, costHeatmap, costMap, maxCost]);
 
   // Build visual nodes/edges — recomputes on selection/search/tour WITHOUT re-layout
   const { nodes, edges } = useMemo(() => {
@@ -167,6 +207,8 @@ function KnowledgeGraphViewInner() {
       const searchScore = searchResults.get(node.id);
       const isHighlighted = searchScore !== undefined;
       const isTourHighlighted = tourSet.has(node.id);
+      const cost = costMap.get(node.id);
+      const hasCost = cost?.costPerYear !== undefined;
 
       const data: CustomNodeData = {
         label: node.name,
@@ -185,6 +227,16 @@ function KnowledgeGraphViewInner() {
         onNodeClick,
         incomingCount: edgeCounts.get(node.id) ?? 0,
         tags: node.tags,
+        costPerYear: cost?.costPerYear,
+        isLeak: cost?.isLeak ?? false,
+        ...(costHeatmap && maxCost > 0
+          ? hasCost
+            ? {
+                costIntensity: Math.sqrt((cost.costPerYear ?? 0) / maxCost),
+                costScale: getCostScale(cost.costPerYear, maxCost),
+              }
+            : { isCostDimmed: true }
+          : {}),
       };
 
       return {
@@ -233,7 +285,7 @@ function KnowledgeGraphViewInner() {
     });
 
     return { nodes: rfNodes, edges: rfEdges };
-  }, [filteredGraph, selectedNodeId, focusNodeId, searchResults, tourSet, onNodeClick, positionMap, edgeCounts]);
+  }, [filteredGraph, selectedNodeId, focusNodeId, searchResults, tourSet, onNodeClick, positionMap, edgeCounts, costMap, maxCost, costHeatmap]);
 
   if (!graph) {
     return (

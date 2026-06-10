@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useDashboardStore } from "../store";
 import { useI18n } from "../contexts/I18nContext";
+import { parseCostTags, formatCostPerYear } from "../utils/costTags";
 
 // Shared layer color palette — used by LayerLegend, LayerClusterNode, PortalNode, and GraphView
 export const LAYER_PALETTE = [
@@ -24,6 +26,22 @@ export default function LayerLegend() {
 
   const layers = graph?.layers ?? [];
   const hasLayers = layers.length > 0;
+
+  // Total $/yr per layer from cost:$N/yr node tags (knowledge graphs).
+  // Codebase graphs have no cost tags, so this stays empty there.
+  const layerCosts = useMemo(() => {
+    const totals = new Map<string, number>();
+    if (!graph) return totals;
+    const costById = new Map(
+      graph.nodes.map((n) => [n.id, parseCostTags(n.tags).costPerYear ?? 0]),
+    );
+    for (const layer of graph.layers) {
+      let sum = 0;
+      for (const id of layer.nodeIds) sum += costById.get(id) ?? 0;
+      if (sum > 0) totals.set(layer.id, sum);
+    }
+    return totals;
+  }, [graph]);
 
   if (!hasLayers) return null;
 
@@ -62,6 +80,11 @@ export default function LayerLegend() {
                 <span className="text-text-muted ml-0.5">
                   ({layer.nodeIds.length})
                 </span>
+                {layerCosts.has(layer.id) && (
+                  <span className="text-accent-dim ml-1 font-mono text-[10px]">
+                    {formatCostPerYear(layerCosts.get(layer.id) ?? 0)}
+                  </span>
+                )}
               </span>
             </div>
           );

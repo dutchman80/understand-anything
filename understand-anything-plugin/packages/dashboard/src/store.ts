@@ -147,6 +147,10 @@ interface DashboardStore {
   nodeTypeFilters: Record<NodeCategory, boolean>;
   toggleNodeTypeFilter: (category: NodeCategory) => void;
 
+  // Cost heatmap (knowledge graphs): scale node size/intensity by cost:$N/yr tags
+  costHeatmap: boolean;
+  toggleCostHeatmap: () => void;
+
   // Detail level: "file" shows only file nodes (architecture view),
   // "class" shows files + class nodes (code structure view) with optional function expansion.
   detailLevel: DetailLevel;
@@ -338,6 +342,9 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       expandedContainers: new Set(),
       pendingFocusContainer: null,
     })),
+
+  costHeatmap: false,
+  toggleCostHeatmap: () => set((state) => ({ costHeatmap: !state.costHeatmap })),
 
   detailLevel: "file",
   setDetailLevel: (level) =>

@@ -70,6 +70,10 @@ export const ru = {
     layers: "Слои",
     edgeCategories: "Категории рёбер",
   },
+  costOverlay: {
+    heatmap: "Затраты",
+    heatmapTitle: "Тепловая карта затрат — масштаб узлов по годовой стоимости",
+  },
   personaSelector: {
     overview: "Обзор",
     overviewDesc: "Высокоуровневый архитектурный вид",

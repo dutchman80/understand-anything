@@ -70,6 +70,10 @@ export const ja = {
     layers: "レイヤー",
     edgeCategories: "エッジカテゴリ",
   },
+  costOverlay: {
+    heatmap: "コスト",
+    heatmapTitle: "コストヒートマップ切替 — 年間コストでノードを拡大",
+  },
   personaSelector: {
     overview: "概要",
     overviewDesc: "高レベルアーキテクチャビュー",
