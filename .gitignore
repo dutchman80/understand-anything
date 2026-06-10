@@ -1,5 +1,7 @@
 node_modules
 dist
+dist-static
+dist-static-build
 .understand-anything
 *.tsbuildinfo
 .DS_Store
