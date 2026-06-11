@@ -7,6 +7,8 @@ export default tseslint.config(
     ignores: [
       '**/node_modules/**',
       '**/dist/**',
+      '**/dist-static/**',
+      '**/dist-static-build/**',
       '**/build/**',
       '**/public/**',
       '**/coverage/**',

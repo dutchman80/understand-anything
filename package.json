@@ -31,6 +31,7 @@
     "build": "pnpm -r build",
     "test": "vitest run",
     "dev:dashboard": "pnpm --filter @understand-anything/dashboard dev",
+    "build:static": "pnpm --filter @understand-anything/dashboard build:static",
     "lint": "eslint ."
   },
   "devDependencies": {

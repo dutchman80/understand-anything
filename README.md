@@ -278,6 +278,24 @@ git add .gitattributes .understand-anything/
 
 ---
 
+## 📄 Static export
+
+Need to share a dashboard with someone who won't run a dev server? `build:static` produces **one self-contained HTML file** — app code, styles, and the graph data all inlined — that opens directly via `file://`. No server, no token, no network.
+
+```bash
+# From the repo root (or understand-anything-plugin/packages/dashboard)
+pnpm build:static -- --graph /path/to/your-project --title "My Project"
+```
+
+- `--graph` points at a project root containing `.understand-anything/` (or at the `.understand-anything` directory itself). `knowledge-graph.json` is required; `meta.json`, `domain-graph.json`, `diff-overlay.json`, and `config.json` are bundled when present.
+- `--title "<page title>"` optionally overrides the browser tab title (defaults to the project name).
+
+The script builds `@understand-anything/core`, runs Vite with `vite.config.static.ts` (single chunk, demo mode, no token gate), inlines the JS/CSS into `index.html`, injects the data as `window.__UA_DATA__` behind a `fetch` shim, and writes `dist-static/<project-name>.html` inside the dashboard package. Absolute `filePath` values are relativised the same way the dev server does, so the file is safe to share.
+
+> **Note:** the source-code viewer needs the dev server's `/file-content.json` endpoint, so file contents aren't browsable in a static export — everything else (graph, search, tours, layers) works offline.
+
+---
+
 ## 🔧 Under the Hood
 
 ### Tree-sitter + LLM hybrid
