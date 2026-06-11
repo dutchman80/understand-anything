@@ -70,6 +70,10 @@ export const zh = {
     layers: "层级",
     edgeCategories: "边类别",
   },
+  costOverlay: {
+    heatmap: "成本",
+    heatmapTitle: "切换成本热力图 — 按年成本缩放节点",
+  },
   personaSelector: {
     overview: "概览",
     overviewDesc: "高层次架构视图",

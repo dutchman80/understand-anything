@@ -1,0 +1,6 @@
+{
+  "fork": "dutchman80/understand-anything",
+  "baseVersion": "2.7.6",
+  "build": 1,
+  "notes": "Fork build number. baseVersion mirrors the upstream plugin version the fork is based on."
+}

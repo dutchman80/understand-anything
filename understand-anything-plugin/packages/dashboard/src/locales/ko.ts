@@ -70,6 +70,10 @@ export const ko = {
     layers: "레이어",
     edgeCategories: "엣지 카테고리",
   },
+  costOverlay: {
+    heatmap: "비용",
+    heatmapTitle: "비용 히트맵 전환 — 연간 비용에 따라 노드 크기 조절",
+  },
   personaSelector: {
     overview: "개요",
     overviewDesc: "고수준 아키텍처 뷰",

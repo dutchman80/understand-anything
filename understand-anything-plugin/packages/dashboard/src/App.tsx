@@ -244,6 +244,8 @@ function DashboardContent({
   const setDetailLevel = useDashboardStore((s) => s.setDetailLevel);
   const showFunctionsInClassView = useDashboardStore((s) => s.showFunctionsInClassView);
   const toggleShowFunctionsInClassView = useDashboardStore((s) => s.toggleShowFunctionsInClassView);
+  const costHeatmap = useDashboardStore((s) => s.costHeatmap);
+  const toggleCostHeatmap = useDashboardStore((s) => s.toggleCostHeatmap);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("info");
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding);
@@ -488,6 +490,22 @@ function DashboardContent({
         <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
           <div className="flex items-center gap-4 w-max">
             <DiffToggle />
+            {/* Cost heatmap — knowledge graphs only (cost:$N/yr tags) */}
+            {isKnowledgeGraph && (
+              <button
+                type="button"
+                onClick={toggleCostHeatmap}
+                title={t.costOverlay.heatmapTitle}
+                data-testid="cost-heatmap-toggle"
+                className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded border transition-colors whitespace-nowrap ${
+                  costHeatmap
+                    ? "border-accent/50 bg-accent/10 text-accent"
+                    : "border-border-medium bg-elevated text-text-muted hover:text-text-secondary"
+                }`}
+              >
+                {t.costOverlay.heatmap}
+              </button>
+            )}
             {/* Detail level: file view (architecture) / class view (code structure) */}
             {!isKnowledgeGraph && viewMode !== "domain" && (
               <>

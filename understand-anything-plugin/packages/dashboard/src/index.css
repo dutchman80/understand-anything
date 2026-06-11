@@ -195,6 +195,12 @@ body {
   box-shadow: 0 0 20px var(--glow-accent);
 }
 
+/* Leak-tagged knowledge nodes: distinct border + glow (theme variables only) */
+.leak-glow {
+  border-color: var(--color-diff-changed);
+  box-shadow: 0 0 14px var(--color-diff-changed-dim);
+}
+
 /* Diff overlay glow effects */
 .diff-changed-glow {
   box-shadow: 0 0 16px rgba(224, 82, 82, 0.25);

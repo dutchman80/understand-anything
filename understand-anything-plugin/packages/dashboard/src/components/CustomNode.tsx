@@ -3,6 +3,7 @@ import { Handle, Position } from "@xyflow/react";
 import type { NodeProps, Node } from "@xyflow/react";
 import type { NodeType } from "@understand-anything/core/types";
 import { useI18n } from "../contexts/I18nContext";
+import { formatCostPerYear } from "../utils/costTags";
 
 // Color maps keyed by NodeType — must be kept in sync with core NodeType union.
 const typeColors: Record<NodeType, string> = {
@@ -77,6 +78,16 @@ export interface CustomNodeData extends Record<string, unknown> {
   incomingCount?: number;
   outgoingCount?: number;
   tags?: string[];
+  /** Parsed from cost:$N/yr tags; renders a compact badge when present. */
+  costPerYear?: number;
+  /** Nodes tagged `leak` get a distinct accent border/glow. */
+  isLeak?: boolean;
+  /** Cost heatmap: 0..1 fill intensity relative to the graph's max cost. */
+  costIntensity?: number;
+  /** Cost heatmap: node size multiplier (matches the layout's reserved box). */
+  costScale?: number;
+  /** Cost heatmap: true for nodes without cost data — rendered dimmed. */
+  isCostDimmed?: boolean;
 }
 
 export type CustomFlowNode = Node<CustomNodeData, "custom">;
@@ -120,22 +131,48 @@ function CustomNodeComponent({
     extraClass += " diff-faded";
   }
 
+  // Leak treatment (composes with selection/search rings)
+  if (data.isLeak) {
+    extraClass += " leak-glow";
+  }
+
   // Selection-based dimming (when another node is selected, fade unrelated nodes)
   if (data.isSelectionFaded) {
     extraClass += " opacity-20 pointer-events-auto";
   } else if (data.isNeighbor) {
     extraClass += " ring-1 ring-gold-dim/50";
+  } else if (data.isCostDimmed) {
+    extraClass += " opacity-30";
   }
 
   const name = data.label ?? "unnamed";
   const truncatedName =
     name.length > 24 ? name.slice(0, 22) + "..." : name;
 
+  // Heatmap scaling renders the node larger from its top-left corner so it
+  // stays inside the (equally scaled) box the layout reserved for it.
+  const heatmapStyle: React.CSSProperties | undefined =
+    data.costScale && data.costScale !== 1
+      ? { transform: `scale(${data.costScale})`, transformOrigin: "top left" }
+      : undefined;
+
   return (
     <div
       className={`relative rounded-lg bg-elevated border border-border-subtle ${extraClass} min-w-[180px] max-w-[220px] overflow-hidden transition-[box-shadow,outline,opacity,filter] duration-200 cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.3)]`}
+      style={heatmapStyle}
       onClick={() => data.onNodeClick?.(id)}
     >
+      {/* Cost heatmap fill — accent wash whose strength tracks cost vs graph max */}
+      {data.costIntensity !== undefined && data.costIntensity > 0 && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundColor: "var(--color-accent)",
+            opacity: 0.08 + data.costIntensity * 0.3,
+          }}
+        />
+      )}
+
       {/* Left color bar */}
       <div
         className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
@@ -154,6 +191,14 @@ function CustomNodeComponent({
             {data.nodeType}
           </span>
           <div className="flex items-center gap-1.5">
+            {data.costPerYear !== undefined && (
+              <span
+                className="text-[9px] font-mono px-1 py-px rounded bg-accent/15 text-accent border border-border-subtle whitespace-nowrap"
+                title={`Estimated cost: ${formatCostPerYear(data.costPerYear)}`}
+              >
+                {formatCostPerYear(data.costPerYear)}
+              </span>
+            )}
             <span className={`text-[9px] font-mono ${complexityColor}`}>
               {data.complexity}
             </span>

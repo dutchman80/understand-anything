@@ -70,6 +70,10 @@ export const en = {
     layers: "Layers",
     edgeCategories: "Edge Categories",
   },
+  costOverlay: {
+    heatmap: "Cost",
+    heatmapTitle: "Toggle cost heatmap — scale nodes by annual cost",
+  },
   personaSelector: {
     overview: "Overview",
     overviewDesc: "High-level architecture view",
