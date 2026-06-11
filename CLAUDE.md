@@ -55,12 +55,14 @@ An open-source tool combining LLM intelligence + static analysis to produce inte
 - `scripts/generate-large-graph.mjs` — Generates a fake knowledge graph for performance testing (e.g. large-graph layout). Writes to `.understand-anything/knowledge-graph.json`. Usage: `node scripts/generate-large-graph.mjs [nodeCount]` (default: 3000 nodes). Not part of the production pipeline.
 
 ## Versioning
-When pushing to remote, bump the version in **all five** of these files (keep them in sync):
+This repo is a fork. The `"version"` fields in the five plugin manifests are **locked to the upstream repo** the fork is based on — never bump them here. Keeping them byte-identical to upstream avoids merge conflicts when syncing the fork. The locked files:
 - `understand-anything-plugin/package.json` → `"version"` field
 - `understand-anything-plugin/.claude-plugin/plugin.json` → `"version"` field
 - `.claude-plugin/plugin.json` → `"version"` field
 - `.cursor-plugin/plugin.json` → `"version"` field
 - `.copilot-plugin/plugin.json` → `"version"` field
+
+To distinguish this fork's builds, bump `"build"` in the root `fork-build.json` instead when pushing to remote (and update its `baseVersion` if the fork is rebased onto a newer upstream release). When several branches are in flight at once, set the same build number with identical file content on each so the branches merge cleanly.
 
 Note: `.claude-plugin/marketplace.json` does **not** carry a version — the `plugins[]` entry only supports `name` and `source`, and adding other fields causes marketplace schema validation failures.
 
