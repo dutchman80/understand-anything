@@ -78,6 +78,12 @@ export const ja = {
     deepDive: "詳細",
     deepDiveDesc: "コード中心のチャット",
   },
+  knowledgeLayout: {
+    force: "フォース",
+    flow: "フロー",
+    forceTitle: "力学レイアウト",
+    flowTitle: "左から右へのフローレイアウト（ツアー順）",
+  },
   sidebar: {
     info: "情報",
     files: "ファイル",

@@ -78,6 +78,12 @@ export const en = {
     deepDive: "Deep Dive",
     deepDiveDesc: "Code-focused with chat",
   },
+  knowledgeLayout: {
+    force: "Force",
+    flow: "Flow",
+    forceTitle: "Force-directed layout",
+    flowTitle: "Left-to-right flow layout (tour order)",
+  },
   sidebar: {
     info: "Info",
     files: "Files",

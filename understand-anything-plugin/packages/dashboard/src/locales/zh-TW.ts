@@ -78,6 +78,12 @@ export const zhTW = {
     deepDive: "深入",
     deepDiveDesc: "程式碼聚焦與對話",
   },
+  knowledgeLayout: {
+    force: "力導向",
+    flow: "流程",
+    forceTitle: "力導向佈局",
+    flowTitle: "從左到右的流程佈局（按導覽順序）",
+  },
   sidebar: {
     info: "資訊",
     files: "檔案",
